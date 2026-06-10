@@ -3,6 +3,34 @@ Proyecto de investigación para la materia Redes Neuronales enfocado en mejorar 
 
 Dataset: LOL-v1 + LOL-v2-real (1174 pares) — split 80/10/10 (seed 42): train=939, val=117, test=118.
 
+**App desplegada:** _(pendiente — agregar URL de Streamlit Cloud)_
+
+## Integrantes
+
+<!-- Completar con los nombres del grupo -->
+- Nico Bustelo
+- Jean Paul
+
+## Aplicación web
+
+El usuario sube una foto oscura y la app devuelve una versión más clara usando **Zero-DCE-FT++**, el modelo ganador del proyecto (mejor PSNR en test). El código de producción está en [`prod/`](prod/): `app.py` (interfaz Streamlit) + `utils.py` (modelo e inferencia). Los pesos finales (~0.45 MB) están versionados en [`dev/modelo.pth`](dev/modelo.pth).
+
+### Correr localmente
+
+```bash
+git clone https://github.com/jeanpaulmst/LowLight-Enhancement.git
+cd LowLight-Enhancement
+pip install -r prod/requirements.txt
+streamlit run prod/app.py
+```
+
+### Dataset
+
+- LOL-v1: https://www.kaggle.com/datasets/soumikrakshit/lol-dataset
+- LOL-v2-real: https://huggingface.co/datasets/okhater/lolv2-real
+
+Detalles de descarga y estructura en [`data/README.md`](data/README.md).
+
 ---
 
 ## Modelos
