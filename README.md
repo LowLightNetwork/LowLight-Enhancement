@@ -15,7 +15,7 @@ Fine-tuning adversarial de RetinexNet con un critic (discriminador) PatchGAN y G
 La imagen oscura se descompone en **Reflectance (R)** e **Illumination (I)** via DecomNet. RelightNet realza la iluminación produciendo `I_enh`, y la salida final es `R × I_enh`. Un crítico PatchGAN (~2.76M params) guía al generador con loss WGAN-GP + reconstrucción L1.
 
 - **Parámetros generador:** 555k | **Crítico:** 2.76M
-- **Entrenamiento:** 10 épocas, batch=8, N_CRITIC=5, lr=1e-4
+- **Entrenamiento:** 50 épocas, batch=8, N_CRITIC=5, lr=1e-4
 - **Resultados (val):** PSNR = 17.75 dB | SSIM = 0.669
 
 ![alt text](/diagramas/Retinex-GAN.png)
