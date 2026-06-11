@@ -1,5 +1,7 @@
 data/raw/
 data/processed/
+.streamlit/secrets.toml
+prod/.streamlit/secrets.toml
 .venv/
 __pycache__/
 claude_skills

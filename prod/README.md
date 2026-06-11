@@ -9,7 +9,9 @@ usando el modelo **Zero-DCE-FT++** entrenado en este proyecto (mejor PSNR sobre 
 
 | Archivo | Responsabilidad |
 |---|---|
-| `app.py` | Interfaz Streamlit: upload, controles, visualización lado a lado y descarga |
+| `app.py` | Interfaz Streamlit: upload, controles, visualización lado a lado, descarga y compartir en la biblioteca |
+| `pages/1_Biblioteca.py` | Galería pública con las imágenes compartidas por los usuarios |
+| `library_db.py` | Acceso a Supabase (Storage + Postgres) para subir y listar imágenes de la biblioteca |
 | `utils.py` | Arquitectura del modelo, carga de pesos, preprocesamiento, TTA y postprocesamiento |
 | `requirements.txt` | Dependencias con versiones fijadas |
 
@@ -26,6 +28,38 @@ streamlit run prod/app.py
 ```
 
 La app queda disponible en `http://localhost:8501`.
+
+## Biblioteca de imágenes compartidas
+
+La app incluye una página **Biblioteca** (navegación lateral) con las imágenes
+mejoradas que los usuarios deciden compartir. Nada se sube por defecto: después
+de mejorar una imagen, el usuario puede ingresar un nombre/usertag y apretar
+**Subir a la biblioteca**. Solo se comparte la imagen mejorada (no la original).
+
+La persistencia usa Supabase:
+
+- **Storage**: bucket `library` (lectura pública) con los PNG.
+- **Postgres**: tabla `library_images` (`usertag`, `image_path`, `created_at`),
+  con RLS habilitado y lectura pública. El esquema ya está aplicado como
+  migración (`create_library`) en el proyecto de Supabase.
+
+### Credenciales
+
+La app lee las credenciales desde `st.secrets`. Localmente, crear
+`prod/.streamlit/secrets.toml` (está en `.gitignore`):
+
+```toml
+SUPABASE_URL = "https://ryejeoiccbmtxaafkjaz.supabase.co"
+SUPABASE_KEY = "<service_role key>"
+```
+
+La `service_role` key se copia desde el dashboard de Supabase
+(Settings → API). Solo se usa server-side; nunca llega al navegador.
+En Streamlit Cloud, cargar los mismos dos valores en
+App settings → Secrets.
+
+Si faltan las credenciales, la app sigue funcionando normalmente y solo se
+deshabilita la sección de compartir/galería.
 
 ## Detalles de inferencia
 

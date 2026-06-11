@@ -10,6 +10,7 @@ import time
 import streamlit as st
 from PIL import Image
 
+from library_db import supabase_configured, upload_to_library
 from utils import enhance_image, load_model
 
 st.set_page_config(
@@ -79,10 +80,21 @@ uploaded = st.file_uploader(
 if uploaded is not None:
     original = Image.open(uploaded)
 
-    with st.spinner("Mejorando la imagen..."):
-        t0 = time.time()
-        enhanced = enhance_image(model, original, use_tta=use_tta)
-        elapsed = time.time() - t0
+    # Cachear el resultado en session_state para que interacciones posteriores
+    # (ej. subir a la biblioteca) no vuelvan a correr la inferencia.
+    result_key = (uploaded.file_id, use_tta)
+    if st.session_state.get("result_key") != result_key:
+        with st.spinner("Mejorando la imagen..."):
+            t0 = time.time()
+            st.session_state["enhanced"] = enhance_image(
+                model, original, use_tta=use_tta
+            )
+            st.session_state["elapsed"] = time.time() - t0
+            st.session_state["result_key"] = result_key
+            st.session_state["shared"] = False
+
+    enhanced = st.session_state["enhanced"]
+    elapsed = st.session_state["elapsed"]
 
     col_in, col_out = st.columns(2)
     with col_in:
@@ -106,6 +118,42 @@ if uploaded is not None:
         file_name="imagen_mejorada.png",
         mime="image/png",
     )
+
+    # -----------------------------------------------------------------------
+    # Compartir en la biblioteca (opt-in: nada se sube por defecto)
+    # -----------------------------------------------------------------------
+
+    st.divider()
+    st.subheader("Compartir en la biblioteca")
+
+    if not supabase_configured():
+        st.warning(
+            "La biblioteca no está disponible: faltan las credenciales de "
+            "Supabase (`SUPABASE_URL` y `SUPABASE_KEY` en los secrets)."
+        )
+    elif st.session_state.get("shared"):
+        st.success("¡Tu imagen ya está en la biblioteca! Podés verla en la página **Biblioteca**.")
+    else:
+        st.markdown(
+            "Si querés, podés subir tu resultado a la biblioteca pública de la "
+            "app para que otros lo vean. Solo se comparte la imagen mejorada."
+        )
+        usertag = st.text_input(
+            "Tu nombre o usertag",
+            max_chars=50,
+            placeholder="ej. @nico",
+        )
+        if st.button("Subir a la biblioteca"):
+            if not usertag.strip():
+                st.error("Ingresá un nombre o usertag antes de subir.")
+            else:
+                try:
+                    with st.spinner("Subiendo a la biblioteca..."):
+                        upload_to_library(enhanced, usertag)
+                    st.session_state["shared"] = True
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"No se pudo subir la imagen: {e}")
 else:
     st.info(
         "Esperando una imagen... Funciona mejor con fotos tomadas con poca luz. "
