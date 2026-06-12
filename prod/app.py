@@ -136,12 +136,13 @@ if uploaded is not None:
     else:
         st.markdown(
             "Si querés, podés subir tu resultado a la biblioteca pública de la "
-            "app para que otros lo vean. Solo se comparte la imagen mejorada."
+            "app para que otros lo vean. Se comparten la imagen original y la "
+            "mejorada para poder ver la comparación."
         )
         usertag = st.text_input(
-            "Tu nombre o usertag",
-            max_chars=50,
-            placeholder="ej. @nico",
+            "Tu nombre, usertag o alias",
+            placeholder="ej. Nicolas Bustelo, @nicobustelo, Nico",
+            help="Puede ser cualquier texto que quieras mostrar junto a tu imagen.",
         )
         if st.button("Subir a la biblioteca"):
             if not usertag.strip():
@@ -149,7 +150,7 @@ if uploaded is not None:
             else:
                 try:
                     with st.spinner("Subiendo a la biblioteca..."):
-                        upload_to_library(enhanced, usertag)
+                        upload_to_library(original, enhanced, usertag)
                     st.session_state["shared"] = True
                     st.rerun()
                 except Exception as e:
