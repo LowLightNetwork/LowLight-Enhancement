@@ -8,8 +8,10 @@ Dataset: LOL-v1 + LOL-v2-real (1174 pares) — split 80/10/10 (seed 42): train=9
 ## Integrantes
 
 <!-- Completar con los nombres del grupo -->
-- Nico Bustelo
-- Jean Paul
+- Nicolás Bustelo
+- Juan Pablo Masuet
+- Manuel Vazquez
+- Mauricio Miranda
 
 ## Aplicación web
 

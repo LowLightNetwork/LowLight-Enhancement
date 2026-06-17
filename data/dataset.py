@@ -1,0 +1,108 @@
+import os
+import random
+import numpy as np
+import torch
+from PIL import Image
+from torch.utils.data import Dataset, DataLoader, ConcatDataset, random_split
+
+
+class LowLightDataset(Dataset):
+    def __init__(self, low_dir, high_dir):
+        self.low_dir   = low_dir
+        self.high_dir  = high_dir
+        self.filenames = sorted(os.listdir(low_dir))
+
+    def __len__(self):
+        return len(self.filenames)
+
+    def __getitem__(self, idx):
+        fname    = self.filenames[idx]
+        low_img  = Image.open(os.path.join(self.low_dir,  fname)).convert("RGB")
+        high_img = Image.open(os.path.join(self.high_dir, fname)).convert("RGB")
+        low  = torch.from_numpy(np.array(low_img,  dtype=np.float32) / 255.0).permute(2, 0, 1)
+        high = torch.from_numpy(np.array(high_img, dtype=np.float32) / 255.0).permute(2, 0, 1)
+        return low, high
+
+
+class AugmentSubset(Dataset):
+    def __init__(self, subset, augment=False):
+        self.subset  = subset
+        self.augment = augment
+
+    def __len__(self):
+        return len(self.subset)
+
+    def __getitem__(self, idx):
+        low, high = self.subset[idx]
+        low  = Image.fromarray((low.permute(1, 2, 0).numpy()  * 255).astype(np.uint8))
+        high = Image.fromarray((high.permute(1, 2, 0).numpy() * 255).astype(np.uint8))
+
+        if self.augment:
+            i = random.randint(0, low.height - 128)
+            j = random.randint(0, low.width  - 128)
+            low  = low.crop((j, i, j + 128, i + 128))
+            high = high.crop((j, i, j + 128, i + 128))
+            if random.random() > 0.5:
+                low  = low.transpose(Image.FLIP_LEFT_RIGHT)
+                high = high.transpose(Image.FLIP_LEFT_RIGHT)
+            if random.random() > 0.5:
+                low  = low.transpose(Image.FLIP_TOP_BOTTOM)
+                high = high.transpose(Image.FLIP_TOP_BOTTOM)
+
+        low  = torch.from_numpy(np.array(low,  dtype=np.float32) / 255.0).permute(2, 0, 1)
+        high = torch.from_numpy(np.array(high, dtype=np.float32) / 255.0).permute(2, 0, 1)
+        return low, high
+
+
+def _build_split(base_dir, seed=42):
+    dataset_v1 = LowLightDataset(
+        low_dir  = os.path.join(base_dir, "raw/lol-dataset/lol_dataset/our485/low"),
+        high_dir = os.path.join(base_dir, "raw/lol-dataset/lol_dataset/our485/high"),
+    )
+
+    dataset_v2 = LowLightDataset(
+        low_dir  = os.path.join(base_dir, "raw/lolv2-real/Train/Input"),
+        high_dir = os.path.join(base_dir, "raw/lolv2-real/Train/GT"),
+    )
+
+    full_dataset = ConcatDataset([dataset_v1, dataset_v2])
+
+    n       = len(full_dataset)
+    n_train = int(0.80 * n)
+    n_val   = int(0.10 * n)
+    n_test  = n - n_train - n_val
+
+    return random_split(
+        full_dataset,
+        [n_train, n_val, n_test],
+        generator=torch.Generator().manual_seed(seed)
+    )
+
+
+def get_dataset_split(base_dir, seed=42):
+    train_set, val_set, test_set = _build_split(base_dir, seed)
+
+    train_data = AugmentSubset(train_set, augment=True)
+    val_data   = AugmentSubset(val_set,   augment=False)
+    test_data  = AugmentSubset(test_set,  augment=False)
+
+    return train_data, val_data, test_data
+
+
+def get_dataloaders(base_dir, batch_size_train=8, batch_size_val=None, batch_size_test=None,
+                     seed=42, num_workers=0, pin_memory=False):
+    if batch_size_val is None:
+        batch_size_val = batch_size_train
+    if batch_size_test is None:
+        batch_size_test = batch_size_val
+
+    train_data, val_data, test_data = get_dataset_split(base_dir, seed)
+
+    train_loader = DataLoader(train_data, batch_size=batch_size_train, shuffle=True,
+                               num_workers=num_workers, pin_memory=pin_memory)
+    val_loader   = DataLoader(val_data,   batch_size=batch_size_val,   shuffle=False,
+                               num_workers=num_workers, pin_memory=pin_memory)
+    test_loader  = DataLoader(test_data,  batch_size=batch_size_test,  shuffle=False,
+                               num_workers=num_workers, pin_memory=pin_memory)
+
+    return train_loader, val_loader, test_loader
