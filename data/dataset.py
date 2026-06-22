@@ -27,31 +27,61 @@ def _setup_kaggle_credentials():
         os.environ["KAGGLE_API_TOKEN"] = userdata.get("KAGGLE_KEY")
 
 
+def _setup_hf_credentials():
+    """Carga HF_TOKEN desde Colab Secrets si está disponible.
+
+    Sin token, el Hub limita la tasa de descarga a usuarios anónimos (más lento
+    y a veces con warnings). En Colab: Secrets -> HF_TOKEN (generado en
+    huggingface.co -> Settings -> Access Tokens, alcance "read" alcanza).
+    """
+    try:
+        from google.colab import userdata
+    except ImportError:
+        return
+
+    if "HF_TOKEN" not in os.environ:
+        try:
+            os.environ["HF_TOKEN"] = userdata.get("HF_TOKEN")
+        except Exception:
+            pass  # sin secret HF_TOKEN: sigue de forma anónima (más lento)
+
+
 def download_datasets(base_dir):
     """Descarga LOL-v1 (Kaggle) y LOL-v2-real (HuggingFace) en base_dir/raw.
 
-    Pensada para correrse una vez por sesión de Colab (el runtime arranca
-    limpio cada vez), por eso no chequea si ya existen los datos.
+    Si las carpetas ya existen (ej. quedaron de una corrida anterior dentro de
+    la misma sesión de Colab, o están en una ruta persistida en Drive), se
+    omite la descarga correspondiente.
     """
     raw_dir = os.path.join(base_dir, "raw")
     os.makedirs(raw_dir, exist_ok=True)
 
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "-q", "kaggle"])
-    _setup_kaggle_credentials()
-    import kaggle
-    kaggle.api.authenticate()
-    kaggle.api.dataset_download_files("soumikrakshit/lol-dataset",
-                                       path=raw_dir, quiet=False)
-    zip_path = os.path.join(raw_dir, "lol-dataset.zip")
-    with zipfile.ZipFile(zip_path, "r") as z:
-        z.extractall(os.path.join(raw_dir, "lol-dataset"))
-    os.remove(zip_path)
+    lolv1_dir = os.path.join(raw_dir, "lol-dataset", "lol_dataset")
+    if not os.path.isdir(lolv1_dir):
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "-q", "kaggle"])
+        _setup_kaggle_credentials()
+        import kaggle
+        kaggle.api.authenticate()
+        kaggle.api.dataset_download_files("soumikrakshit/lol-dataset",
+                                           path=raw_dir, quiet=False)
+        zip_path = os.path.join(raw_dir, "lol-dataset.zip")
+        with zipfile.ZipFile(zip_path, "r") as z:
+            z.extractall(os.path.join(raw_dir, "lol-dataset"))
+        os.remove(zip_path)
+    else:
+        print(f"LOL-v1 ya está en {lolv1_dir}, se omite la descarga.")
 
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "-q", "huggingface_hub"])
-    from huggingface_hub import snapshot_download
-    snapshot_download(repo_id="okhater/lolv2-real", repo_type="dataset",
-                       local_dir=os.path.join(raw_dir, "lolv2-real"),
-                       ignore_patterns=["*.gitignore"])
+    lolv2_dir = os.path.join(raw_dir, "lolv2-real")
+    if not os.path.isdir(lolv2_dir):
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "-q", "huggingface_hub[hf_xet]"])
+        _setup_hf_credentials()
+        from huggingface_hub import snapshot_download
+        snapshot_download(repo_id="okhater/lolv2-real", repo_type="dataset",
+                           local_dir=lolv2_dir,
+                           ignore_patterns=["*.gitignore"],
+                           max_workers=8)
+    else:
+        print(f"LOL-v2-real ya está en {lolv2_dir}, se omite la descarga.")
 
 
 class LowLightDataset(Dataset):
