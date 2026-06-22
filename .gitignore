@@ -6,3 +6,4 @@ prod/.streamlit/secrets.toml
 __pycache__/
 claude_skills
 CLAUDE.md
+kaggle_keys.txt
