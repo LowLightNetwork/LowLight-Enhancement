@@ -10,21 +10,21 @@ from torch.utils.data import Dataset, DataLoader, ConcatDataset, random_split
 
 
 def _setup_kaggle_credentials():
-    """Carga KAGGLE_USERNAME / KAGGLE_KEY desde Colab Secrets si están disponibles.
+    """Carga el token nuevo de Kaggle (KAGGLE_API_TOKEN, formato 'KGAT_...') desde
+    Colab Secrets si está disponible.
 
-    En Colab: Secrets (icono de llave en el panel izquierdo) -> KAGGLE_USERNAME y
-    KAGGLE_KEY. Si no estamos en Colab, asume que ya están seteadas como variables
-    de entorno o que existe ~/.kaggle/kaggle.json (flujo estándar de la lib kaggle).
+    En Colab: Secrets (icono de llave en el panel izquierdo) -> secret llamado
+    KAGGLE_KEY con el token (Kaggle -> Settings -> API -> Create New Token).
+    Si no estamos en Colab, asume que ya está seteada como variable de entorno
+    o que existe ~/.kaggle/kaggle.json (flujo estándar de la lib kaggle).
     """
     try:
         from google.colab import userdata
     except ImportError:
         return
 
-    if "KAGGLE_USERNAME" not in os.environ:
-        os.environ["KAGGLE_USERNAME"] = userdata.get("KAGGLE_USERNAME")
-    if "KAGGLE_KEY" not in os.environ:
-        os.environ["KAGGLE_KEY"] = userdata.get("KAGGLE_KEY")
+    if "KAGGLE_API_TOKEN" not in os.environ:
+        os.environ["KAGGLE_API_TOKEN"] = userdata.get("KAGGLE_KEY")
 
 
 def download_datasets(base_dir):
