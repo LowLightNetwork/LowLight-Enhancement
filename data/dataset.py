@@ -1,9 +1,38 @@
 import os
 import random
+import subprocess
+import sys
+import zipfile
 import numpy as np
 import torch
 from PIL import Image
 from torch.utils.data import Dataset, DataLoader, ConcatDataset, random_split
+
+
+def download_datasets(base_dir):
+    """Descarga LOL-v1 (Kaggle) y LOL-v2-real (HuggingFace) en base_dir/raw.
+
+    Pensada para correrse una vez por sesión de Colab (el runtime arranca
+    limpio cada vez), por eso no chequea si ya existen los datos.
+    """
+    raw_dir = os.path.join(base_dir, "raw")
+    os.makedirs(raw_dir, exist_ok=True)
+
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "-q", "kaggle"])
+    import kaggle
+    kaggle.api.authenticate()
+    kaggle.api.dataset_download_files("soumikrakshit/lol-dataset",
+                                       path=raw_dir, quiet=False)
+    zip_path = os.path.join(raw_dir, "lol-dataset.zip")
+    with zipfile.ZipFile(zip_path, "r") as z:
+        z.extractall(os.path.join(raw_dir, "lol-dataset"))
+    os.remove(zip_path)
+
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "-q", "huggingface_hub"])
+    from huggingface_hub import snapshot_download
+    snapshot_download(repo_id="okhater/lolv2-real", repo_type="dataset",
+                       local_dir=os.path.join(raw_dir, "lolv2-real"),
+                       ignore_patterns=["*.gitignore"])
 
 
 class LowLightDataset(Dataset):
