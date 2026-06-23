@@ -73,7 +73,13 @@ def download_datasets(base_dir):
 
     lolv2_dir = os.path.join(raw_dir, "lolv2-real")
     if not os.path.isdir(lolv2_dir):
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "-q", "huggingface_hub[hf_xet]"])
+        # hf_xet (protocolo de transferencia por chunks de HF) se cuelga cerca del
+        # 100% en algunas redes (bug conocido: huggingface/huggingface_hub#3036).
+        # Lo desactivamos y forzamos el downloader HTTP clasico, mas lento por
+        # archivo pero sin el stall.
+        subprocess.check_call([sys.executable, "-m", "pip", "uninstall", "-y", "-q", "hf_xet"])
+        os.environ["HF_HUB_DISABLE_XET"] = "1"
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "-q", "huggingface_hub"])
         _setup_hf_credentials()
         from huggingface_hub import snapshot_download
         snapshot_download(repo_id="okhater/lolv2-real", repo_type="dataset",
